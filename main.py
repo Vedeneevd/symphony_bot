@@ -5,7 +5,8 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from config import settings
 from handlers import start, search, admin
-from services.channel_parser import run_parser
+from handlers.channel import router as channel_router
+from services.channel_parser import ChannelParser
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,14 +14,14 @@ logging.basicConfig(
 )
 
 
-async def scheduled_parser():
-    """Периодический запуск парсера"""
+async def scheduled_parser(bot: Bot):
     while True:
         try:
-            await run_parser()
+            parser = ChannelParser(bot)
+            await parser.parse_new_messages()
         except Exception as e:
-            logging.error(f"Ошибка парсинга: {e}")
-        await asyncio.sleep(3600)  # Каждый час
+            logging.error(f"Parser error: {e}")
+        await asyncio.sleep(5)
 
 
 async def main():
@@ -36,9 +37,10 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(search.router)
     dp.include_router(admin.router)
+    dp.include_router(channel_router)
 
     # Запуск парсера в фоне
-    asyncio.create_task(scheduled_parser())
+    asyncio.create_task(scheduled_parser(bot))
 
     try:
         await dp.start_polling(bot)

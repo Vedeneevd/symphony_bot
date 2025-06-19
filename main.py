@@ -3,7 +3,10 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from database.session import engine
+
 from config import settings
+from database.session import Base
 from handlers import start, search, admin
 from handlers.channel import router as channel_router
 from services.channel_parser import ChannelParser
@@ -13,6 +16,11 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
+
+async def create_tables():
+    """Создает все таблицы в базе данных"""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 async def scheduled_parser(bot: Bot):
     while True:
@@ -26,6 +34,7 @@ async def scheduled_parser(bot: Bot):
 
 async def main():
     # Инициализация aiogram бота
+    await create_tables()
     bot = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)

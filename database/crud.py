@@ -8,7 +8,8 @@ FIXED_HASHTAGS = [
     "#анонсы",
     "#истории",
     "#советы",
-    "#обзоры"
+    "#обзоры",
+    "#авторскиеукрашения",
 ]
 
 async def init_hashtags(session: AsyncSession):

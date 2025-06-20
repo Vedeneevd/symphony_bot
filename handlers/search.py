@@ -20,8 +20,8 @@ async def show_hashtag_posts(callback: types.CallbackQuery):
             await callback.message.answer(f"По рубрике {hashtag} пока нет публикаций.")
             return
 
-        # Ограничиваем вывод (например, 5 последних постов)
-        for post in posts[:5]:
+        # Вывод сообщений
+        for post in posts:
             await callback.message.answer(post.text)
 
         await callback.answer()

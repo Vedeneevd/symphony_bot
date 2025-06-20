@@ -1,8 +1,7 @@
 import json
 import re
-import asyncio
 from datetime import datetime
-from sqlalchemy import select, insert
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import ChannelPost, HashtagStats
 from database.session import async_session
@@ -13,18 +12,48 @@ FIXED_HASHTAGS = [
     "#истории",
     "#советы",
     "#обзоры",
-    "#авторскиеукрашения",
+    "#ювелирныйсет",
 ]
 
 
+def extract_text_and_hashtags(msg: dict) -> tuple[str, list[str]]:
+    """Извлекает текст и хештеги из сообщения любого формата"""
+    text = ""
+    hashtags = []
+
+    # Обработка разных форматов сообщений
+    if isinstance(msg.get('text'), str):
+        text = msg['text']
+    elif isinstance(msg.get('text'), list):
+        # Для сообщений с несколькими частями (текст + медиа)
+        text_parts = []
+        for item in msg['text']:
+            if isinstance(item, str):
+                text_parts.append(item)
+            elif isinstance(item, dict) and 'text' in item:
+                text_parts.append(item['text'])
+        text = ' '.join(text_parts)
+
+    # Извлекаем хештеги только если есть текст
+    if text:
+        hashtags = [
+            tag.lower() for tag in re.findall(r'#\w+', text)
+            if tag.lower() in [h.lower() for h in FIXED_HASHTAGS]
+        ]
+
+    return text, hashtags
+
+
 async def import_from_json(file_path: str):
-    """Импорт сообщений из JSON в базу данных"""
+    """Импорт сообщений из JSON с обработкой всех форматов"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
+        print(f"Всего сообщений в экспорте: {len(data.get('messages', []))}")
+
         async with async_session() as session:
-            # Проверяем подключение к БД
+            # Проверка подключения
             await session.execute(select(1))
             print("✔ Соединение с БД установлено")
 
@@ -33,38 +62,38 @@ async def import_from_json(file_path: str):
 
             added_count = 0
             for msg in data.get('messages', []):
-                if not msg.get('text'):
-                    continue
+                try:
+                    text, msg_hashtags = extract_text_and_hashtags(msg)
+                    if not text or not msg_hashtags:
+                        continue
 
-                # Извлекаем только нужные хештеги
-                msg_hashtags = [
-                    tag.lower() for tag in re.findall(r'#\w+', msg['text'])
-                    if tag.lower() in [h.lower() for h in FIXED_HASHTAGS]
-                ]
+                    # Проверка на дубликаты
+                    exists = await session.execute(
+                        select(ChannelPost)
+                        .where(ChannelPost.message_id == msg['id'])
+                    )
+                    if exists.scalar_one_or_none():
+                        continue
 
-                if not msg_hashtags:
-                    continue
-
-                # Проверяем, есть ли уже такое сообщение
-                exists = await session.execute(
-                    select(ChannelPost)
-                    .where(ChannelPost.message_id == msg['id'])
-                )
-                if not exists.scalar_one_or_none():
+                    # Добавление сообщения
                     post = ChannelPost(
                         message_id=msg['id'],
-                        text=msg['text'],
+                        text=text,
                         date=datetime.strptime(msg['date'], '%Y-%m-%dT%H:%M:%S'),
                         hashtags=",".join(msg_hashtags)
                     )
                     session.add(post)
                     added_count += 1
 
+                except Exception as e:
+                    print(f"Ошибка в сообщении ID {msg.get('id')}: {str(e)}")
+                    continue
+
             await session.commit()
-            print(f"✔ Добавлено {added_count} новых сообщений")
+            print(f"✔ Успешно добавлено {added_count} сообщений")
 
     except Exception as e:
-        print(f"❌ Ошибка импорта: {e}")
+        print(f"❌ Критическая ошибка импорта: {str(e)}")
         raise
 
 
@@ -80,4 +109,6 @@ async def init_hashtags(session: AsyncSession):
 
 
 if __name__ == "__main__":
+    import asyncio
+
     asyncio.run(import_from_json("result.json"))

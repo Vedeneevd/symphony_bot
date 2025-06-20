@@ -1,5 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from database.models import ChannelPost, HashtagStats
 
 # Фиксированный список хештегов
@@ -31,11 +33,12 @@ async def get_all_hashtags(session: AsyncSession):
 
 
 async def search_posts_by_hashtag(session: AsyncSession, hashtag: str):
-    """Поиск постов по конкретному хештегу"""
+    """Поиск постов по конкретному хештегу с медиафайлами"""
     result = await session.execute(
         select(ChannelPost)
         .where(ChannelPost.hashtags.contains(hashtag))
         .order_by(ChannelPost.date.desc())
+        .options(selectinload(ChannelPost.media_files))  # Жадная загрузка медиафайлов
     )
     return result.scalars().all()
 

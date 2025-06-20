@@ -4,12 +4,14 @@ from database.models import ChannelPost, HashtagStats
 
 # Фиксированный список хештегов
 FIXED_HASHTAGS = [
-    "#новости",
-    "#анонсы",
-    "#истории",
-    "#советы",
-    "#обзоры",
-    "#авторскиеукрашения",
+    "#Персона",
+    "#Наша_азбука",
+    "#Редкие_камни",
+    "#Мастера_выставки",
+    "#Рассказы_геологов",
+    "#Новости",
+    "#Наш_путеводитель",
+    "#Символика_пяти_стихий"
 ]
 
 async def init_hashtags(session: AsyncSession):
@@ -20,11 +22,13 @@ async def init_hashtags(session: AsyncSession):
             session.add(HashtagStats(name=tag))
     await session.commit()
 
+
 async def get_all_hashtags(session: AsyncSession):
     """Получить все фиксированные хештеги со статистикой"""
     await init_hashtags(session)  # Убедимся, что хештеги есть в БД
     result = await session.execute(select(HashtagStats).order_by(HashtagStats.name))
     return result.scalars().all()
+
 
 async def search_posts_by_hashtag(session: AsyncSession, hashtag: str):
     """Поиск постов по конкретному хештегу"""
@@ -34,6 +38,7 @@ async def search_posts_by_hashtag(session: AsyncSession, hashtag: str):
         .order_by(ChannelPost.date.desc())
     )
     return result.scalars().all()
+
 
 async def increment_hashtag_counter(session: AsyncSession, hashtag: str):
     """Увеличить счётчик кликов по хештегу"""

@@ -21,7 +21,7 @@ async def show_hashtag_posts(callback: types.CallbackQuery):
             return
 
         # Ограничиваем вывод (например, 5 последних постов)
-        for post in posts[:5]:
+        for post in posts:
             await callback.message.answer(post.text)
 
         await callback.answer()

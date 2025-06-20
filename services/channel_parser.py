@@ -61,7 +61,7 @@ class ChannelParser:
         text = message.text or message.caption or ""
         entities = message.entities or message.caption_entities or []
         return [
-            text[e.offset:e.offset + e.length].lower()
+            text[e.offset:e.offset + e.length]
             for e in entities if e.type == "hashtag"
         ]
 

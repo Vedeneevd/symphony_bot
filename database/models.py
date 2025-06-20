@@ -13,6 +13,7 @@ class ChannelPost(Base):
     hashtags = Column(String)  # Сохраняем хештеги как строку через запятую
 
 
+
 class HashtagStats(Base):
     __tablename__ = 'hashtag_stats'
 
